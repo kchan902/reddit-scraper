@@ -2,8 +2,9 @@
 var express = require('express');
 var router = express.Router();
 var path = require('path');
-var request = require('request'); // for web-scraping
-var cheerio = require('cheerio'); // for web-scraping
+var request = require('request'); 
+var cheerio = require('cheerio'); 
+var axios = require('axios');
 
 // Import the Comment and Article models
 var Comment = require('../models/Comment.js');
@@ -16,6 +17,10 @@ router.get('/', function (req, res){
   res.redirect('/scrape');
 
 });
+
+var db = require("../models");
+
+var app = express();
 
 
 // Articles Page Render
@@ -48,89 +53,76 @@ router.get('/articles', function (req, res){
 router.get('/scrape', function(req, res) {
 
   // First, grab the body of the html with request
-  request('http://www.reddit.com', function(error, response, html) {
+  axios.get("http://www.reddit.com/").then(function(response) {
 
     // Then, load html into cheerio and save it to $ for a shorthand selector
     var $ = cheerio.load(html);
 
-    // This is an error handler for the Onion website only, they have duplicate articles for some reason...
-    var titlesArray = [];
+    // Store data
+    var results = {};
 
     // Now, grab every everything with a class of "inner" with each "article" tag
-    $('article .inner').each(function(i, element) {
+    $('p.title').each(function(i, element) {
 
-        // Create an empty result object
-        var result = {};
+    // Save the text of the element in a "title" variable
+    var title = $(element).text();
 
-        // Collect the Article Title (contained in the "h2" of the "header" of "this")
-        result.title = $(this).children('header').children('h2').text().trim() + ""; //convert to string for error handling later
+    // In the currently selected element, look at its child elements (i.e., its a-tags),
+    // then save the values for any "href" attributes that the child elements may have
+    var link = $(element).children().attr("href");
+    // Save these results in an object that we'll push into the results array we defined earlier
+      results.title = title
+      results.link = link
+      console.log("1", results)
 
-        // Collect the Article Link (contained within the "a" tag of the "h2" in the "header" of "this")
-        result.link = 'http://www.reddit.com/' + $(this).children('header').children('h2').children('a').attr('href').trim();
-
-        // Collect the Article Summary (contained in the next "div" inside of "this")
-        result.summary = $(this).children('div').text().trim() + ""; //convert to string for error handling later
-      
-
-        // Error handling to ensure there are no empty scrapes
-        if(result.title !== "" &&  result.summary !== ""){
-
-          // BUT we must also check within each scrape since the Onion has duplicate articles...
-          // Due to async, moongoose will not save the articles fast enough for the duplicates within a scrape to be caught
-          if(titlesArray.indexOf(result.title) == -1){
-
-            // Push the saved item to our titlesArray to prevent duplicates thanks the the pesky Onion...
-            titlesArray.push(result.title);
-
-            // Only add the entry to the database if is not already there
-            Article.count({ title: result.title}, function (err, test){
-
-              // If the count is 0, then the entry is unique and should be saved
-              if(test == 0){
-
-                // Using the Article model, create a new entry (note that the "result" object has the exact same key-value pairs of the model)
-                var entry = new Article (result);
-
-                // Save the entry to MongoDB
-                entry.save(function(err, doc) {
-                  // log any errors
-                  if (err) {
-                    console.log(err);
-                  } 
-                  // or log the doc that was saved to the DB
-                  else {
-                    console.log(doc);
-                  }
-                });
-
-              }
-              // Log that scrape is working, just the content was already in the Database
-              else{
-                console.log('Redundant Database Content. Not saved to DB.')
-              }
-
-            });
-        }
-        // Log that scrape is working, just the content was missing parts
-        else{
-          console.log('Redundant Content. Not Saved to DB.')
-        }
-
-      }
-      // Log that scrape is working, just the content was missing parts
-      else{
-        console.log('Empty Content. Not Saved to DB.')
-      }
-
+      db.Article
+        .create(results)
+        .then(function(dbArticle) {
+          // If we were able to successfully scrape and save an Article, send a message to the client
+          res.send("Scrape Stuff");
+        })
+        .catch(function(err) {
+          // If an error occurred, send it to the client
+          res.json(err);
+        });
     });
 
-    // Redirect to the Articles Page, done at the end of the request for proper scoping
-    res.redirect("/articles");
-
-  });
-
+    });
 });
 
+
+
+// // A GET route for scraping the echojs website
+// app.get("/scrape", function(req, res) {
+//   // First, we grab the body of the html with request
+//   axios.get("http://www.reddit.com/").then(function(response) {
+//     // Then, we load that into cheerio and save it to $ for a shorthand selector
+//     var $ = cheerio.load(response.data);
+//     // Now, we grab every h2 within an article tag, and do the following:
+//     $("p.title").each(function(i, element) {
+//       // Save an empty result object
+//       var result = {};
+//       // Add the text and href of every link, and save them as properties of the result object
+//       result.title = $(this)
+//         .children("a")
+//         .text();
+//       result.link = $(this)
+//         .children("a")
+//         .attr("href");
+//       // Create a new Article using the `result` object built from scraping
+//       db.Article
+//         .create(result)
+//         .then(function(dbArticle) {
+//           // If we were able to successfully scrape and save an Article, send a message to the client
+//           res.send("Scrape Complete");
+//         })
+//         .catch(function(err) {
+//           // If an error occurred, send it to the client
+//           res.json(err);
+//         });
+//     });
+//   });
+// });
 
 // Add a Comment Route - **API**
 router.post('/add/comment/:id', function (req, res){
