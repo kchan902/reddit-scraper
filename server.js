@@ -1,4 +1,3 @@
-// Node Dependencies
 var express = require('express');
 var exphbs = require('express-handlebars');
 var bodyParser = require('body-parser');
@@ -28,12 +27,10 @@ app.set('view engine', 'handlebars');
 
 // Connect to localhost if not a production environment
 if(process.env.NODE_ENV == 'production'){
-  mongoose.connect('mongodb://heroku_60zpcwg0:ubn0n27pi2856flqoedo9glvh8@ds119578.mlab.com:19578/heroku_60zpcwg0');
+  mongoose.connect('mongodb://heroku_4q0n25xk:c2en38mterkk3bfdn05mqb6set@ds059207.mlab.com:59207/heroku_4q0n25xk');
 }
 else{
-  mongoose.connect('mongodb://localhost/news-scraper');
-  // YOU CAN IGNORE THE CONNECTION URL BELOW (LINE 41) THAT WAS JUST FOR DELETING STUFF ON A RE-DEPLOYMENT
-  //mongoose.connect('mongodb://heroku_60zpcwg0:ubn0n27pi2856flqoedo9glvh8@ds119578.mlab.com:19578/heroku_60zpcwg0');
+  mongoose.connect('mongodb://localhost/reddit-scraper');
 }
 var db = mongoose.connection;
 
@@ -51,14 +48,13 @@ db.once('open', function() {
 var Comment = require('./models/Comment.js');
 var Article = require('./models/Article.js');
 
-
 // Import Routes/Controller
 var router = require('./controllers/controller.js');
 app.use('/', router);
 
 
 // Launch App
-var port = process.env.PORT || 3000;
+var port = process.env.PORT || 4080;
 app.listen(port, function(){
   console.log('Running on port: ' + port);
 });
