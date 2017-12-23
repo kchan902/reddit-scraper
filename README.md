@@ -15,4 +15,4 @@ If you wish to clone the app down to your local machine...
   2. Once you are set up, `cd` into this repo and run `npm install`.
   3. Then open another bash or terminal window and run `mongod`
   4. Run the script with `node server.js`.
-  5. Navigate to `localhost:4080` in your browser.
+  5. Navigate to `localhost:4070` in your browser.
